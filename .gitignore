@@ -11,11 +11,6 @@ node_modules
 dist
 dist-ssr
 *.local
-List.css
-UserInfo.css
-ChatList.css
-Detail.css
-Chat.css
 
 # Editor directories and files
 .vscode/*

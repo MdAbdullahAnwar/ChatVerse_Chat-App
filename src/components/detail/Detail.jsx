@@ -1,8 +1,9 @@
 import React from 'react';
+import './Detail.css';
 
 const Detail = () => {
   return (
-    <div className="flex-1">
+    <div className="detail">
       Detail
     </div>
   );
