@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AddUser from "./addUser/addUser";
 import PerfectScrollbar from "react-perfect-scrollbar";
 import "react-perfect-scrollbar/dist/css/styles.css";
 import "./ChatList.css";
@@ -91,6 +92,7 @@ const ChatList = () => {
           </div>
         </div>
       </PerfectScrollbar>
+      {addMode && <AddUser/>}
     </div>
   );
 };

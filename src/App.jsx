@@ -3,9 +3,10 @@ import List from "./components/list/List.jsx";
 import Chat from "./components/chat/Chat.jsx";
 import Detail from "./components/detail/detail.jsx";
 import Login from "./components/login/Login.jsx";
+import Notification from "./components/notification/Notification.jsx";
 
 const App = () => {
-  const user = false;
+  const user = true;
 
   return (
     <div className="container">
@@ -18,6 +19,7 @@ const App = () => {
       ) : (
         <Login />
       )}
+      <Notification/>
     </div>
   );
 };
