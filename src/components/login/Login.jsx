@@ -79,7 +79,8 @@ const Login = () => {
   return (
     <div className="login">
       <div className="item">
-        <h1>Welcome back</h1>
+        <img src={"./ChatVerse.png"} alt="ChatVerse" />
+        <h1>Welcome back to ChatVerse</h1>
         <form onSubmit={handleLogin}>
           <input type="text" placeholder="Email" name="email" />
           <input type="password" placeholder="Password" name="password" />
@@ -88,7 +89,8 @@ const Login = () => {
       </div>
       <div className="separator"></div>
       <div className="item">
-        <h1>Create an Account</h1>
+        <img src={"./ChatVerse.png"} alt="ChatVerse" />
+        <h1>Create an Account in ChatVerse</h1>
         <form onSubmit={handleRegister}>
           <label htmlFor="file">
             <img src={avatar.url || "./avatar.png"} alt="" />

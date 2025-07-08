@@ -1,4 +1,4 @@
-import React, { use, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import EmojiPicker from "emoji-picker-react";
 import PerfectScrollbar from "react-perfect-scrollbar";
 import "react-perfect-scrollbar/dist/css/styles.css";
@@ -14,6 +14,7 @@ import { db } from "../../lib/firebase";
 import { useChatStore } from "../../lib/chatStore";
 import { useUserStore } from "../../lib/userStore";
 import upload from "../../lib/upload";
+import CameraComponent from "./CameraComponent";
 
 const Chat = () => {
   const [chat, setChat] = useState();
@@ -23,10 +24,10 @@ const Chat = () => {
     file: null,
     url: "",
   });
+  const [showCamera, setShowCamera] = useState(false);
 
   const { currentUser } = useUserStore();
-  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } =
-    useChatStore();
+  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
 
   const scrollRef = useRef(null);
 
@@ -51,8 +52,6 @@ const Chat = () => {
     };
   }, [chatId]);
 
-  // console.log(chat);
-
   const handleEmoji = (e) => {
     setText((prev) => prev + e.emoji);
     setOpen(false);
@@ -62,16 +61,14 @@ const Chat = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Optional: Show preview immediately
     const previewUrl = URL.createObjectURL(file);
     setImg({ file, url: previewUrl });
 
     try {
-      const imgUrl = await upload(file); // Wait for upload
+      const imgUrl = await upload(file);
 
       if (!imgUrl) throw new Error("No image URL returned");
 
-      // Add image message to Firestore
       await updateDoc(doc(db, "chats", chatId), {
         messages: arrayUnion({
           senderId: currentUser.id,
@@ -81,7 +78,6 @@ const Chat = () => {
         }),
       });
 
-      // Update last message
       const userIDs = [currentUser.id, user.id];
       for (const id of userIDs) {
         const userChatsRef = doc(db, "userchats", id);
@@ -103,7 +99,6 @@ const Chat = () => {
         }
       }
 
-      // Clear preview
       setImg({ file: null, url: "" });
     } catch (error) {
       console.error("Image send failed:", error.message);
@@ -160,12 +155,46 @@ const Chat = () => {
       console.error("Send error:", err);
     }
 
-    // Clear input
     setImg({ file: null, url: "" });
     setText("");
   };
 
-  //   console.log(text);
+  const handleSendCameraPhoto = async (imgUrl) => {
+    try {
+      await updateDoc(doc(db, "chats", chatId), {
+        messages: arrayUnion({
+          senderId: currentUser.id,
+          text: "",
+          createdAt: new Date(),
+          img: imgUrl,
+        }),
+      });
+
+      const userIDs = [currentUser.id, user.id];
+      for (const id of userIDs) {
+        const userChatsRef = doc(db, "userchats", id);
+        const snapshot = await getDoc(userChatsRef);
+        if (!snapshot.exists()) continue;
+
+        const userChatsData = snapshot.data();
+        const chatIndex = userChatsData.chats.findIndex(
+          (c) => c.chatId === chatId
+        );
+        if (chatIndex !== -1) {
+          userChatsData.chats[chatIndex].lastMessage = "📷 Photo";
+          userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
+          userChatsData.chats[chatIndex].updatedAt = Date.now();
+
+          await updateDoc(userChatsRef, {
+            chats: userChatsData.chats,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error sending camera photo:", error);
+      throw error;
+    }
+  };
 
   return (
     <div className="chat">
@@ -183,6 +212,17 @@ const Chat = () => {
           <img src="./info.png" alt="" />
         </div>
       </div>
+
+      {showCamera && (
+        <CameraComponent
+          onSendPhoto={handleSendCameraPhoto}
+          onClose={() => setShowCamera(false)}
+          currentUser={currentUser}
+          chatId={chatId}
+          user={user}
+        />
+      )}
+
       <PerfectScrollbar
         containerRef={(ref) => (scrollRef.current = ref)}
         options={{
@@ -202,7 +242,7 @@ const Chat = () => {
             >
               <div className="texts">
                 {message.img && <img src={message.img} alt="" />}
-                {message.text && <p>{message.text}</p>}{" "}
+                {message.text && <p>{message.text}</p>}
                 <span>
                   {message.createdAt?.seconds
                     ? new Date(
@@ -225,6 +265,7 @@ const Chat = () => {
           )}
         </div>
       </PerfectScrollbar>
+
       <div className="bottom">
         <div className="icons">
           <label htmlFor="file">
@@ -236,7 +277,12 @@ const Chat = () => {
             style={{ display: "none" }}
             onChange={handleImg}
           />
-          <img src="./camera.png" alt="" />
+          <img 
+            src="./camera.png" 
+            alt="" 
+            onClick={() => setShowCamera(true)}
+            style={{ cursor: 'pointer' }}
+          />
           <img src="./mic.png" alt="" />
         </div>
         <input
