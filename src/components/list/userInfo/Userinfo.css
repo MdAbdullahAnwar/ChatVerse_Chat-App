@@ -9,27 +9,80 @@
     align-items: center;
     gap: 20px;
 
-    img{
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
+    img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
     }
 
-    h2{
-        font-size: 20px;
-        font-weight: bold;
+    h2 {
+      font-size: 20px;
+      font-weight: bold;
     }
   }
 
-  .icons{
+  .icons {
     display: flex;
     gap: 20px;
 
-    img{
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
+    img {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
     }
   }
+}
+
+.editModal {
+  width: 50rem;
+  height: max-content;
+  padding: 30px;
+  background-color: rgba(17, 25, 40, 0.85);
+  border-radius: 10px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  z-index: 10;
+}
+
+.editModal h3 {
+  margin-bottom: 20px;
+  color: white;
+  font-size: 18px;
+}
+
+.editModal input {
+  padding: 20px;
+  border-radius: 10px;
+  border: none;
+  background-color: white;
+  outline: none;
+  color: black;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.editModal input[type="file"] {
+  background-color: transparent;
+  color: white;
+}
+
+.editModal .buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.editModal .buttons button {
+  padding: 20px;
+  border-radius: 10px;
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  cursor: pointer;
+  width: 120px;
 }
