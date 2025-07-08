@@ -15,9 +15,11 @@ const upload = async (file) => {
     if (data.success) {
       return data.data.url;
     } else {
+      console.error("ImgBB upload failed:", data);
       throw new Error("Image upload failed");
     }
   } catch (error) {
+    console.error("ImgBB upload error:", error.message);
     throw new Error("ImgBB upload error: " + error.message);
   }
 };
