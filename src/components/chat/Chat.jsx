@@ -15,6 +15,7 @@ import { useChatStore } from "../../lib/chatStore";
 import { useUserStore } from "../../lib/userStore";
 import upload from "../../lib/upload";
 import CameraComponent from "./CameraComponent";
+import VoiceRecorder from "./VoiceRecorder";
 
 const Chat = () => {
   const [chat, setChat] = useState();
@@ -25,9 +26,11 @@ const Chat = () => {
     url: "",
   });
   const [showCamera, setShowCamera] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
 
   const { currentUser } = useUserStore();
-  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
+  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } =
+    useChatStore();
 
   const scrollRef = useRef(null);
 
@@ -196,6 +199,43 @@ const Chat = () => {
     }
   };
 
+  const handleSendVoiceNote = async (audioUrl) => {
+    try {
+      await updateDoc(doc(db, "chats", chatId), {
+        messages: arrayUnion({
+          senderId: currentUser.id,
+          text: "",
+          createdAt: new Date(),
+          audio: audioUrl,
+        }),
+      });
+
+      const userIDs = [currentUser.id, user.id];
+      for (const id of userIDs) {
+        const userChatsRef = doc(db, "userchats", id);
+        const snapshot = await getDoc(userChatsRef);
+        if (!snapshot.exists()) continue;
+
+        const userChatsData = snapshot.data();
+        const chatIndex = userChatsData.chats.findIndex(
+          (c) => c.chatId === chatId
+        );
+        if (chatIndex !== -1) {
+          userChatsData.chats[chatIndex].lastMessage = "🎤 Voice note";
+          userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
+          userChatsData.chats[chatIndex].updatedAt = Date.now();
+
+          await updateDoc(userChatsRef, {
+            chats: userChatsData.chats,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error sending voice note:", error);
+      throw error;
+    }
+  };
+
   return (
     <div className="chat">
       <div className="top">
@@ -242,6 +282,13 @@ const Chat = () => {
             >
               <div className="texts">
                 {message.img && <img src={message.img} alt="" />}
+                {message.audio && (
+                  <audio controls className="audio-message">
+                    <source src={message.audio} type="audio/mp3" />
+                    <source src={message.audio} type="audio/webm" />
+                    Your browser doesn't support audio playback
+                  </audio>
+                )}
                 {message.text && <p>{message.text}</p>}
                 <span>
                   {message.createdAt?.seconds
@@ -277,13 +324,26 @@ const Chat = () => {
             style={{ display: "none" }}
             onChange={handleImg}
           />
-          <img 
-            src="./camera.png" 
-            alt="" 
+          <img
+            src="./camera.png"
+            alt=""
             onClick={() => setShowCamera(true)}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: "pointer" }}
           />
-          <img src="./mic.png" alt="" />
+          <img
+            src="./mic.png"
+            alt=""
+            onClick={() => setShowVoiceRecorder(true)}
+            style={{ cursor: "pointer" }}
+          />
+          {/* // Add this near your camera component render: */}
+          {showVoiceRecorder && (
+            <VoiceRecorder
+              onSendVoiceNote={handleSendVoiceNote}
+              onClose={() => setShowVoiceRecorder(false)}
+            />
+          )}
+          {/* <img src="./mic.png" alt="" /> */}
         </div>
         <input
           type="text"

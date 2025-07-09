@@ -1,0 +1,120 @@
+.voice-recorder-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  padding: 20px;
+  background-color: rgba(17, 25, 40, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.recording-section, .playback-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ff4d4d;
+  font-weight: 500;
+}
+
+.recording-time {
+  color: #a5a5a5;
+  font-size: 14px;
+}
+
+.pulse {
+  width: 12px;
+  height: 12px;
+  background-color: #ff4d4d;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.mic-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mic-icon img {
+  width: 40px;
+  height: 40px;
+  filter: invert(1);
+}
+
+.start-btn, .stop-btn, .send-btn, .discard-btn, .close-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-btn {
+  background-color: #5183fe;
+  color: white;
+}
+
+.stop-btn {
+  background-color: #ff4d4d;
+  color: white;
+}
+
+.send-btn {
+  background-color: #5183fe;
+  color: white;
+  width: 100px;
+}
+
+.send-btn:disabled {
+  background-color: #5182feb4;
+  cursor: not-allowed;
+}
+
+.discard-btn {
+  background-color: rgba(255, 77, 77, 0.8);
+  color: white;
+  width: 100px;
+}
+
+.close-btn {
+  background-color: rgba(17, 25, 40, 0.6);
+  color: white;
+  border: 1px solid #dddddd35;
+  width: 100%;
+}
+
+.audio-player {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.playback-controls {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}

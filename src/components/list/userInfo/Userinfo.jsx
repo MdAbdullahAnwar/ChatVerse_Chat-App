@@ -41,8 +41,7 @@ const Userinfo = () => {
       </div>
 
       <div className="icons">
-        <img src="./more.png" alt="more" />
-        <img src="./video.png" alt="video" />
+        <p>Edit Profile</p>
         <img src="./edit.png" alt="edit" onClick={() => setOpenEdit(true)} />
       </div>
 
