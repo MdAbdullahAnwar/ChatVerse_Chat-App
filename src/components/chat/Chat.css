@@ -171,3 +171,38 @@
     }
   }
 }
+
+.clear-btn {
+  background-color: #5183fe;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  width: 100px;
+  height: 35px;
+  padding: 4px 8px;
+  font-size: 14px;
+  margin-top: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  float: right;
+}
+
+.chat {
+  position: relative;
+}
+
+.emoji-picker-container {
+  position: absolute;
+  bottom: 90px;
+  right: 100px;
+  z-index: 1000;
+}

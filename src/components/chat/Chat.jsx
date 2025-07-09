@@ -21,43 +21,64 @@ const Chat = () => {
   const [chat, setChat] = useState();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [img, setImg] = useState({
-    file: null,
-    url: "",
-  });
+  const [img, setImg] = useState({ file: null, url: "" });
   const [showCamera, setShowCamera] = useState(false);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [hoveredMsgId, setHoveredMsgId] = useState(null);
 
   const { currentUser } = useUserStore();
-  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } =
-    useChatStore();
+  const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
 
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [chat?.messages, img.url]);
-
-  const endRef = useRef(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
+    if (!chatId) return;
     const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
       setChat(res.data());
     });
-    return () => {
-      unSub();
-    };
+    return () => unSub();
   }, [chatId]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo?.(0, scrollRef.current.scrollHeight);
+  }, [chat?.messagesByUser?.[currentUser?.id], img.url]);
 
   const handleEmoji = (e) => {
     setText((prev) => prev + e.emoji);
     setOpen(false);
+  };
+
+  const updateLastMessage = async (newMessage) => {
+    const userChatsRef = doc(db, "userchats", currentUser.id);
+    const receiverChatsRef = doc(db, "userchats", user.id);
+
+    const [userChatsSnap, receiverChatsSnap] = await Promise.all([
+      getDoc(userChatsRef),
+      getDoc(receiverChatsRef),
+    ]);
+
+    if (!userChatsSnap.exists() || !receiverChatsSnap.exists()) return;
+
+    const updateChatArray = (chats, isSender) =>
+      chats.map((c) =>
+        c.chatId === chatId
+          ? {
+              ...c,
+              lastMessage: newMessage.text || "📎 Attachment",
+              updatedAt: Date.now(),
+              isSeen: isSender,
+            }
+          : c
+      );
+
+    await Promise.all([
+      updateDoc(userChatsRef, {
+        chats: updateChatArray(userChatsSnap.data().chats, true),
+      }),
+      updateDoc(receiverChatsRef, {
+        chats: updateChatArray(receiverChatsSnap.data().chats, false),
+      }),
+    ]);
   };
 
   const handleImg = async (e) => {
@@ -69,43 +90,22 @@ const Chat = () => {
 
     try {
       const imgUrl = await upload(file);
-
-      if (!imgUrl) throw new Error("No image URL returned");
+      const msg = {
+        senderId: currentUser.id,
+        text: "",
+        createdAt: new Date(),
+        img: imgUrl,
+      };
 
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text: "",
-          createdAt: new Date(),
-          img: imgUrl,
-        }),
+        [`messagesByUser.${currentUser.id}`]: arrayUnion(msg),
+        [`messagesByUser.${user.id}`]: arrayUnion(msg),
       });
 
-      const userIDs = [currentUser.id, user.id];
-      for (const id of userIDs) {
-        const userChatsRef = doc(db, "userchats", id);
-        const snapshot = await getDoc(userChatsRef);
-        if (!snapshot.exists()) continue;
-
-        const userChatsData = snapshot.data();
-        const chatIndex = userChatsData.chats.findIndex(
-          (c) => c.chatId === chatId
-        );
-        if (chatIndex !== -1) {
-          userChatsData.chats[chatIndex].lastMessage = "📷 Photo";
-          userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
-          userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-          await updateDoc(userChatsRef, {
-            chats: userChatsData.chats,
-          });
-        }
-      }
-
+      await updateLastMessage(msg);
       setImg({ file: null, url: "" });
-    } catch (error) {
-      console.error("Image send failed:", error.message);
-      alert("Image upload failed. Try again.");
+    } catch (err) {
+      console.error("Image send error:", err);
     }
   };
 
@@ -113,126 +113,92 @@ const Chat = () => {
     if (text.trim() === "" && !img.file) return;
 
     let imgUrl = null;
+    if (img.file) imgUrl = await upload(img.file);
+
+    const newMessage = {
+      senderId: currentUser.id,
+      text: text.trim(),
+      createdAt: new Date(),
+      ...(imgUrl && { img: imgUrl }),
+    };
 
     try {
-      if (img.file) {
-        imgUrl = await upload(img.file);
-      }
-
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text: text.trim(),
-          createdAt: new Date(),
-          ...(imgUrl && { img: imgUrl }),
-        }),
+        [`messagesByUser.${currentUser.id}`]: arrayUnion(newMessage),
+        [`messagesByUser.${user.id}`]: arrayUnion(newMessage),
       });
 
-      const lastMsg = imgUrl ? "📷 Photo" : text;
-
-      const userIDs = [currentUser.id, user.id];
-
-      userIDs.forEach(async (id) => {
-        const userChatsRef = doc(db, "userchats", id);
-        const userChatsSnapshot = await getDoc(userChatsRef);
-
-        if (userChatsSnapshot.exists()) {
-          const userChatsData = userChatsSnapshot.data();
-
-          const chatIndex = userChatsData.chats.findIndex(
-            (c) => c.chatId === chatId
-          );
-
-          if (chatIndex !== -1) {
-            userChatsData.chats[chatIndex].lastMessage = lastMsg;
-            userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
-            userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-            await updateDoc(userChatsRef, {
-              chats: userChatsData.chats,
-            });
-          }
-        }
-      });
+      await updateLastMessage(newMessage);
+      setImg({ file: null, url: "" });
+      setText("");
     } catch (err) {
       console.error("Send error:", err);
     }
+  };
 
-    setImg({ file: null, url: "" });
-    setText("");
+  const handleClearChat = async () => {
+    if (!chatId || !currentUser) return;
+    try {
+      await updateDoc(doc(db, "chats", chatId), {
+        [`messagesByUser.${currentUser.id}`]: [],
+      });
+    } catch (err) {
+      console.error("Clear chat failed:", err);
+    }
+  };
+
+  const handleDeleteMessage = async (timestamp) => {
+    const messages = chat?.messagesByUser?.[currentUser.id] || [];
+    const newMessages = messages.filter(
+      (m) => m.createdAt?.seconds !== timestamp?.seconds
+    );
+
+    try {
+      await updateDoc(doc(db, "chats", chatId), {
+        [`messagesByUser.${currentUser.id}`]: newMessages,
+      });
+    } catch (err) {
+      console.error("Delete message failed:", err);
+    }
   };
 
   const handleSendCameraPhoto = async (imgUrl) => {
+    const newMessage = {
+      senderId: currentUser.id,
+      text: "",
+      createdAt: new Date(),
+      img: imgUrl,
+    };
+
     try {
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text: "",
-          createdAt: new Date(),
-          img: imgUrl,
-        }),
+        [`messagesByUser.${currentUser.id}`]: arrayUnion(newMessage),
+        [`messagesByUser.${user.id}`]: arrayUnion(newMessage),
       });
 
-      const userIDs = [currentUser.id, user.id];
-      for (const id of userIDs) {
-        const userChatsRef = doc(db, "userchats", id);
-        const snapshot = await getDoc(userChatsRef);
-        if (!snapshot.exists()) continue;
-
-        const userChatsData = snapshot.data();
-        const chatIndex = userChatsData.chats.findIndex(
-          (c) => c.chatId === chatId
-        );
-        if (chatIndex !== -1) {
-          userChatsData.chats[chatIndex].lastMessage = "📷 Photo";
-          userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
-          userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-          await updateDoc(userChatsRef, {
-            chats: userChatsData.chats,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error sending camera photo:", error);
-      throw error;
+      await updateLastMessage(newMessage);
+    } catch (err) {
+      console.error("Camera photo send error:", err);
     }
   };
 
   const handleSendVoiceNote = async (audioUrl) => {
+    const newMessage = {
+      senderId: currentUser.id,
+      text: "",
+      createdAt: new Date(),
+      audio: audioUrl,
+    };
+
     try {
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text: "",
-          createdAt: new Date(),
-          audio: audioUrl,
-        }),
+        [`messagesByUser.${currentUser.id}`]: arrayUnion(newMessage),
+        [`messagesByUser.${user.id}`]: arrayUnion(newMessage),
       });
 
-      const userIDs = [currentUser.id, user.id];
-      for (const id of userIDs) {
-        const userChatsRef = doc(db, "userchats", id);
-        const snapshot = await getDoc(userChatsRef);
-        if (!snapshot.exists()) continue;
-
-        const userChatsData = snapshot.data();
-        const chatIndex = userChatsData.chats.findIndex(
-          (c) => c.chatId === chatId
-        );
-        if (chatIndex !== -1) {
-          userChatsData.chats[chatIndex].lastMessage = "🎤 Voice note";
-          userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
-          userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-          await updateDoc(userChatsRef, {
-            chats: userChatsData.chats,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error sending voice note:", error);
-      throw error;
+      await updateLastMessage(newMessage);
+    } catch (err) {
+      console.error("Voice note send error:", err);
     }
   };
 
@@ -247,9 +213,9 @@ const Chat = () => {
           </div>
         </div>
         <div className="icons">
-          <img src="./phone.png" alt="" />
-          <img src="./video.png" alt="" />
-          <img src="./info.png" alt="" />
+          <button onClick={handleClearChat} className="clear-btn">
+            Clear Chat
+          </button>
         </div>
       </div>
 
@@ -257,36 +223,28 @@ const Chat = () => {
         <CameraComponent
           onSendPhoto={handleSendCameraPhoto}
           onClose={() => setShowCamera(false)}
-          currentUser={currentUser}
-          chatId={chatId}
-          user={user}
         />
       )}
 
       <PerfectScrollbar
         containerRef={(ref) => (scrollRef.current = ref)}
-        options={{
-          suppressScrollX: true,
-          wheelSpeed: 0.3,
-          swipeEasing: true,
-          minScrollbarLength: 20,
-        }}
+        options={{ suppressScrollX: true }}
       >
         <div className="center">
-          {chat?.messages?.map((message) => (
+          {chat?.messagesByUser?.[currentUser.id]?.map((message, i) => (
             <div
-              className={
-                message.senderId === currentUser?.id ? "message own" : "message"
-              }
-              key={message.createdAt?.seconds || Math.random()}
+              className={`message ${
+                message.senderId === currentUser.id ? "own" : ""
+              }`}
+              key={message.createdAt?.seconds || i}
+              onMouseEnter={() => setHoveredMsgId(i)}
+              onMouseLeave={() => setHoveredMsgId(null)}
             >
               <div className="texts">
-                {message.img && <img src={message.img} alt="" />}
+                {message.img && <img src={message.img} alt="sent" />}
                 {message.audio && (
-                  <audio controls className="audio-message">
+                  <audio controls>
                     <source src={message.audio} type="audio/mp3" />
-                    <source src={message.audio} type="audio/webm" />
-                    Your browser doesn't support audio playback
                   </audio>
                 )}
                 {message.text && <p>{message.text}</p>}
@@ -300,13 +258,21 @@ const Chat = () => {
                       })
                     : "Sending..."}
                 </span>
+                {hoveredMsgId === i && (
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteMessage(message.createdAt)}
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}
           {img.url && (
             <div className="message own">
               <div className="texts">
-                <img src={img.url} alt="" />
+                <img src={img.url} alt="preview" />
               </div>
             </div>
           )}
@@ -316,7 +282,7 @@ const Chat = () => {
       <div className="bottom">
         <div className="icons">
           <label htmlFor="file">
-            <img src="./img.png" alt="" />
+            <img src="./img.png" alt="upload" />
           </label>
           <input
             type="file"
@@ -324,26 +290,18 @@ const Chat = () => {
             style={{ display: "none" }}
             onChange={handleImg}
           />
-          <img
-            src="./camera.png"
-            alt=""
-            onClick={() => setShowCamera(true)}
-            style={{ cursor: "pointer" }}
-          />
+          <img src="./camera.png" alt="" onClick={() => setShowCamera(true)} />
           <img
             src="./mic.png"
             alt=""
             onClick={() => setShowVoiceRecorder(true)}
-            style={{ cursor: "pointer" }}
           />
-          {/* // Add this near your camera component render: */}
           {showVoiceRecorder && (
             <VoiceRecorder
               onSendVoiceNote={handleSendVoiceNote}
               onClose={() => setShowVoiceRecorder(false)}
             />
           )}
-          {/* <img src="./mic.png" alt="" /> */}
         </div>
         <input
           type="text"
@@ -361,11 +319,14 @@ const Chat = () => {
             src="./emoji.png"
             alt=""
             onClick={() => setOpen((prev) => !prev)}
+            style={{ cursor: "pointer" }}
           />
-          <div className="picker">
-            <EmojiPicker open={open} onEmojiClick={handleEmoji} />
-          </div>
         </div>
+        {open && (
+          <div className="emoji-picker-container">
+            <EmojiPicker onEmojiClick={handleEmoji} />
+          </div>
+        )}
         <button
           className="sendButton"
           onClick={handleSend}
