@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import AddUser from "./addUser/addUser";
+import AddUser from "./addUser/AddUser";
 import PerfectScrollbar from "react-perfect-scrollbar";
 import "react-perfect-scrollbar/dist/css/styles.css";
 import "./ChatList.css";
